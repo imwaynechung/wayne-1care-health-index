@@ -513,10 +513,6 @@ function DomainRow({
   );
 }
 
-    </div>
-  );
-}
-
 function BarRow({
   label,
   score,
