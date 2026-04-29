@@ -395,80 +395,125 @@ function TriageCard({
   label,
   domainId,
   score,
+  defaultOpen = false,
 }: {
   label: string;
   domainId: string;
   score: number;
+  defaultOpen?: boolean;
 }) {
   const triage = getDomainTriage(domainId, score);
   const cfg = TRIAGE_CONFIG[triage];
   const data = HLI_TRIAGE[domainId];
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div
-      className="rounded-2xl border p-4 mb-3 last:mb-0"
+      className="rounded-2xl border mb-3 last:mb-0 overflow-hidden tap-press"
       style={{ background: cfg.bg, borderColor: cfg.border }}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      {/* Header row — clickable */}
+      <button
+        type="button"
+        onClick={() => { haptic(6); setOpen((o) => !o); }}
+        className="w-full flex items-center justify-between p-4 text-left"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-base">{cfg.dot}</span>
-          <span className="text-sm font-bold text-slate-800">{label}</span>
+          <span className="text-sm font-bold text-slate-800 truncate">{label}</span>
+          <span
+            className="text-[10px] font-bold uppercase tracking-wide ml-1"
+            style={{ color: cfg.color }}
+          >
+            {triage}
+          </span>
         </div>
-        <span
-          className="text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ background: cfg.color + '18', color: cfg.color }}
-        >
-          {cfg.priority}
-        </span>
-      </div>
-
-      {/* Your status */}
-      <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-white/70">
-        <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: cfg.color }}>
-            Your Status — {triage}
-          </div>
-          <div className="text-xs text-slate-600 leading-relaxed">
-            {data.levels.find((l) => l.level === triage)?.desc}
-          </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className="text-xs font-bold px-2.5 py-1 rounded-full"
+            style={{ background: cfg.color + '18', color: cfg.color }}
+          >
+            {cfg.priority}
+          </span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={cfg.color}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.32s var(--ease-soft)',
+            }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
-      </div>
+      </button>
 
-      {/* Level bands */}
-      <div className="space-y-1.5 mb-3">
-        {data.levels.map((l) => {
-          const lCfg = TRIAGE_CONFIG[l.level];
-          const isActive = l.level === triage;
-          return (
-            <div
-              key={l.level}
-              className="flex gap-2 items-start rounded-lg px-2.5 py-2 transition-all"
-              style={{ background: isActive ? lCfg.color + '12' : 'transparent' }}
-            >
-              <span className="text-xs mt-0.5 flex-shrink-0">{lCfg.dot}</span>
+      {/* Collapsible body */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300"
+        style={{
+          gridTemplateRows: open ? '1fr' : '0fr',
+          transitionTimingFunction: 'var(--ease-soft)',
+        }}
+      >
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4">
+            {/* Your status */}
+            <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-white/70">
+              <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
               <div>
-                <span className="text-xs font-bold" style={{ color: isActive ? lCfg.color : '#94a3b8' }}>
-                  {l.level}:{' '}
-                </span>
-                <span className="text-xs" style={{ color: isActive ? '#374151' : '#94a3b8' }}>
-                  {l.desc}
-                </span>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: cfg.color }}>
+                  Your Status — {triage}
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  {data.levels.find((l) => l.level === triage)?.desc}
+                </div>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Tip */}
-      <div className="flex gap-2 items-start bg-white/60 rounded-xl px-3 py-2.5">
-        <svg className="flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <p className="text-xs leading-relaxed" style={{ color: cfg.color }}>
-          <span className="font-semibold">Action: </span>{data.tip}
-        </p>
+            {/* Level bands */}
+            <div className="space-y-1.5 mb-3">
+              {data.levels.map((l) => {
+                const lCfg = TRIAGE_CONFIG[l.level];
+                const isActive = l.level === triage;
+                return (
+                  <div
+                    key={l.level}
+                    className="flex gap-2 items-start rounded-lg px-2.5 py-2 transition-all"
+                    style={{ background: isActive ? lCfg.color + '12' : 'transparent' }}
+                  >
+                    <span className="text-xs mt-0.5 flex-shrink-0">{lCfg.dot}</span>
+                    <div>
+                      <span className="text-xs font-bold" style={{ color: isActive ? lCfg.color : '#94a3b8' }}>
+                        {l.level}:{' '}
+                      </span>
+                      <span className="text-xs" style={{ color: isActive ? '#374151' : '#94a3b8' }}>
+                        {l.desc}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tip */}
+            <div className="flex gap-2 items-start bg-white/60 rounded-xl px-3 py-2.5">
+              <svg className="flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p className="text-xs leading-relaxed" style={{ color: cfg.color }}>
+                <span className="font-semibold">Action: </span>{data.tip}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
