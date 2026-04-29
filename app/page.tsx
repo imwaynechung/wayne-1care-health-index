@@ -117,12 +117,78 @@ const WHO5_LEVEL_DESC: Record<string, string> = {
     'This score suggests meaningful emotional strain. Talking to someone — a friend, GP, or counsellor — can help.',
 };
 
-const HLI_SCORE_NOTE: Record<number, string> = {
-  4: 'Excellent — keep it up.',
-  3: 'Good — small tweaks can push this higher.',
-  2: 'Moderate — there is real room to improve here.',
-  1: 'Low — this area is worth prioritising.',
-  0: 'Very low — addressing this could make the biggest difference.',
+// ─── HLI Triage map ──────────────────────────────────────────────────────────
+
+type TriageLevel = 'High' | 'Moderate' | 'Low';
+
+interface DomainTriage {
+  threshold: string;
+  levels: { level: TriageLevel; desc: string }[];
+  tip: string;
+}
+
+const HLI_TRIAGE: Record<string, DomainTriage> = {
+  activity: {
+    threshold: '≥150 min/week moderate intensity or ≥75 min/week vigorous',
+    levels: [
+      { level: 'High', desc: '≥150 min/week — 35% reduced all-cause mortality vs. inactive individuals.' },
+      { level: 'Moderate', desc: '75–149 min/week — partial benefit; some risk reduction but not optimal.' },
+      { level: 'Low', desc: '<75 min/week — significantly elevated CVD, T2D, and all-cause mortality risk.' },
+    ],
+    tip: 'Aim for at least 30 minutes on 5 or more days per week — brisk walking counts.',
+  },
+  diet: {
+    threshold: '≥5 servings/day fruit + vegetables',
+    levels: [
+      { level: 'High', desc: '≥5 servings/day — associated with significant mortality reduction when combined with other healthy behaviours.' },
+      { level: 'Moderate', desc: '2–4 servings/day — partial protection; synergistic benefit not yet fully unlocked.' },
+      { level: 'Low', desc: '<2 servings/day — elevated inflammation, poor micronutrient status, higher CVD and cancer risk.' },
+    ],
+    tip: 'Try to reach 5 servings a day — 1 piece of fruit or half a cup of vegetables each.',
+  },
+  smoking: {
+    threshold: 'Never-smoker or former smoker (<100 cigarettes lifetime)',
+    levels: [
+      { level: 'High', desc: 'Never-smoker — lowest risk; qualifies for full HLI High band contribution.' },
+      { level: 'Moderate', desc: 'Former smoker — risk declines progressively every year after quitting; 10-year ex-smokers approach never-smoker risk levels.' },
+      { level: 'Low', desc: 'Current smoker — strongest single predictor of all-cause, CVD, and cancer mortality; non-smoking alone associated with 37% reduced mortality risk.' },
+    ],
+    tip: 'Every year after quitting, your risk continues to fall significantly.',
+  },
+  sleep: {
+    threshold: 'Wakes rested; feels tired ≤1–2 times/month',
+    levels: [
+      { level: 'High', desc: '7–8 hours quality sleep — associated with 38% reduced all-cause mortality independently.' },
+      { level: 'Moderate', desc: 'Occasionally poor sleep quality; some nights unrestful — partial risk elevation.' },
+      { level: 'Low', desc: 'Feels tired after waking ≥3–4×/week — reaches independent statistical significance for all-cause mortality (HR: 0.62).' },
+    ],
+    tip: 'Most adults do best with 7–8 hours per night — quality matters as much as quantity.',
+  },
+  sedentary: {
+    threshold: 'Regularly breaks up sitting time; not sedentary for prolonged periods',
+    levels: [
+      { level: 'High', desc: 'Regularly stands or walks every hour — consistent with WHO sedentary behaviour guidelines.' },
+      { level: 'Moderate', desc: 'Mostly seated with occasional breaks — partial risk; physical activity partially compensates.' },
+      { level: 'Low', desc: '>8 hours/day unbroken sitting — elevated metabolic risk independent of physical activity level.' },
+    ],
+    tip: 'Try to stand up or take a short walk every hour to break up sitting time.',
+  },
+};
+
+// Map HLI score to triage level per domain
+function getDomainTriage(domainId: string, score: number): TriageLevel {
+  if (domainId === 'activity') return score >= 4 ? 'High' : score >= 2 ? 'Moderate' : 'Low';
+  if (domainId === 'diet')     return score >= 4 ? 'High' : score >= 2 ? 'Moderate' : 'Low';
+  if (domainId === 'smoking')  return score >= 4 ? 'High' : score >= 2 ? 'Moderate' : 'Low';
+  if (domainId === 'sleep')    return score >= 4 ? 'High' : score >= 2 ? 'Moderate' : 'Low';
+  if (domainId === 'sedentary') return score >= 3 ? 'High' : score >= 2 ? 'Moderate' : 'Low';
+  return 'Moderate';
+}
+
+const TRIAGE_CONFIG: Record<TriageLevel, { color: string; bg: string; border: string; dot: string; priority: string }> = {
+  High:     { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', dot: '🟢', priority: 'Maintain' },
+  Moderate: { color: '#d97706', bg: '#fffbeb', border: '#fde68a', dot: '🟡', priority: 'Improve' },
+  Low:      { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', dot: '🔴', priority: 'Act Now' },
 };
 
 // ─── Scoring helpers ──────────────────────────────────────────────────────────
@@ -260,6 +326,89 @@ function MiniArc({ score, max, color }: { score: number; max: number; color: str
       />
       <text x="36" y="40" textAnchor="middle" fill={color} fontSize="14" fontWeight="700">{score}</text>
     </svg>
+  );
+}
+
+function TriageCard({
+  label,
+  domainId,
+  score,
+}: {
+  label: string;
+  domainId: string;
+  score: number;
+}) {
+  const triage = getDomainTriage(domainId, score);
+  const cfg = TRIAGE_CONFIG[triage];
+  const data = HLI_TRIAGE[domainId];
+
+  return (
+    <div
+      className="rounded-2xl border p-4 mb-3 last:mb-0"
+      style={{ background: cfg.bg, borderColor: cfg.border }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base">{cfg.dot}</span>
+          <span className="text-sm font-bold text-slate-800">{label}</span>
+        </div>
+        <span
+          className="text-xs font-bold px-2.5 py-1 rounded-full"
+          style={{ background: cfg.color + '18', color: cfg.color }}
+        >
+          {cfg.priority}
+        </span>
+      </div>
+
+      {/* Your status */}
+      <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-white/70">
+        <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: cfg.color }}>
+            Your Status — {triage}
+          </div>
+          <div className="text-xs text-slate-600 leading-relaxed">
+            {data.levels.find((l) => l.level === triage)?.desc}
+          </div>
+        </div>
+      </div>
+
+      {/* Level bands */}
+      <div className="space-y-1.5 mb-3">
+        {data.levels.map((l) => {
+          const lCfg = TRIAGE_CONFIG[l.level];
+          const isActive = l.level === triage;
+          return (
+            <div
+              key={l.level}
+              className="flex gap-2 items-start rounded-lg px-2.5 py-2 transition-all"
+              style={{ background: isActive ? lCfg.color + '12' : 'transparent' }}
+            >
+              <span className="text-xs mt-0.5 flex-shrink-0">{lCfg.dot}</span>
+              <div>
+                <span className="text-xs font-bold" style={{ color: isActive ? lCfg.color : '#94a3b8' }}>
+                  {l.level}:{' '}
+                </span>
+                <span className="text-xs" style={{ color: isActive ? '#374151' : '#94a3b8' }}>
+                  {l.desc}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Tip */}
+      <div className="flex gap-2 items-start bg-white/60 rounded-xl px-3 py-2.5">
+        <svg className="flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p className="text-xs leading-relaxed" style={{ color: cfg.color }}>
+          <span className="font-semibold">Action: </span>{data.tip}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -736,25 +885,43 @@ export default function OneCareBaselinePage() {
           </div>
         </div>
 
-        {/* Lifestyle breakdown card */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4 animate-fade-up delay-200">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-slate-800 text-sm font-bold">Lifestyle Breakdown</span>
-            <span className="text-xs text-slate-400 font-medium">out of 4</span>
+        {/* Triage summary strip */}
+        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 mb-4 animate-fade-up delay-200">
+          <div className="text-slate-800 text-sm font-bold mb-3">Lifestyle Domain Triage</div>
+          <div className="space-y-2">
+            {HLI_QUESTIONS.map((q, i) => {
+              const score = hliAnswers[i] ?? 0;
+              const triage = getDomainTriage(q.id, score);
+              const cfg = TRIAGE_CONFIG[triage];
+              return (
+                <div key={q.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{cfg.dot}</span>
+                    <span className="text-sm text-slate-700 font-medium">{q.section}</span>
+                  </div>
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: cfg.color + '15', color: cfg.color }}
+                  >
+                    {cfg.priority}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          {hliBreakdownItems.map((item, i) => {
-            const domainId = HLI_QUESTIONS[i].id;
-            const expl = HLI_EXPLANATIONS[domainId];
-            const barColor = item.score >= 3 ? '#22c55e' : item.score >= 2 ? '#f59e0b' : '#ef4444';
-            const scoreNote = HLI_SCORE_NOTE[item.score] ?? '';
-            return (
-              <div key={item.label} className="mb-4 last:mb-0">
-                <BarRow label={item.label} score={item.score} max={item.max} color={barColor} />
-                <p className="text-xs text-slate-500 leading-relaxed mt-1">{scoreNote}</p>
-                <p className="text-xs text-slate-400 leading-relaxed">{expl.tip}</p>
-              </div>
-            );
-          })}
+        </div>
+
+        {/* Detailed triage cards */}
+        <div className="mb-4 animate-fade-up delay-200">
+          <div className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Domain Detail</div>
+          {HLI_QUESTIONS.map((q, i) => (
+            <TriageCard
+              key={q.id}
+              label={q.section}
+              domainId={q.id}
+              score={hliAnswers[i] ?? 0}
+            />
+          ))}
         </div>
 
         {/* Mental wellbeing note */}
