@@ -191,6 +191,41 @@ const TRIAGE_CONFIG: Record<TriageLevel, { color: string; bg: string; border: st
   Low:      { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', dot: '🔴', priority: 'Act Now' },
 };
 
+// ─── WHO-5 Triage ────────────────────────────────────────────────────────────
+
+const WHO5_TRIAGE_BANDS = [
+  {
+    level: 'High' as TriageLevel,
+    label: 'Good well-being',
+    pctRange: '51–100%',
+    rawRange: '14–25',
+    desc: 'No screening needed. Continue maintaining your mental wellness habits.',
+    action: 'Keep up your current routines — social connection, sleep, and purpose all support good mental health.',
+  },
+  {
+    level: 'Moderate' as TriageLevel,
+    label: 'Poor well-being',
+    pctRange: '29–50%',
+    rawRange: '8–13',
+    desc: 'Indicates mild depressive symptoms. Flag for further assessment.',
+    action: 'Consider speaking to a GP or counsellor. Small changes in sleep, activity, and social contact can help.',
+  },
+  {
+    level: 'Low' as TriageLevel,
+    label: 'Priority — act now',
+    pctRange: '0–28%',
+    rawRange: '0–7',
+    desc: 'Indicates moderate-to-severe depressive symptoms. Clinical referral recommended.',
+    action: 'Please speak to a healthcare professional soon. This score warrants a clinical follow-up.',
+  },
+];
+
+function getWho5Triage(pct: number): TriageLevel {
+  if (pct >= 51) return 'High';
+  if (pct >= 29) return 'Moderate';
+  return 'Low';
+}
+
 // ─── Scoring helpers ──────────────────────────────────────────────────────────
 
 function calcWho5Points(rawScore: number): number {
@@ -817,8 +852,6 @@ export default function OneCareBaselinePage() {
     max: 4,
   }));
 
-  const showWellbeingNote = who5Pct < 52;
-
   return (
     <div className="min-h-screen" style={{ background: '#f0f4ff' }}>
       {/* Hero score section */}
@@ -924,23 +957,81 @@ export default function OneCareBaselinePage() {
           ))}
         </div>
 
-        {/* Mental wellbeing note */}
-        {showWellbeingNote && (
-          <div
-            className="rounded-3xl p-5 mb-4 border border-amber-100 animate-fade-up"
-            style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-xl bg-amber-400/20 flex items-center justify-center">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        {/* WHO-5 Triage Card */}
+        <div className="mb-4 animate-fade-up">
+          <div className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Mental Wellbeing Triage</div>
+          {(() => {
+            const who5Triage = getWho5Triage(who5Pct);
+            const cfg = TRIAGE_CONFIG[who5Triage];
+            const activeBand = WHO5_TRIAGE_BANDS.find((b) => b.level === who5Triage)!;
+            return (
+              <div
+                className="rounded-2xl border p-4"
+                style={{ background: cfg.bg, borderColor: cfg.border }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{cfg.dot}</span>
+                    <span className="text-sm font-bold text-slate-800">WHO-5 Wellbeing Index</span>
+                  </div>
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: cfg.color + '18', color: cfg.color }}
+                  >
+                    {cfg.priority}
+                  </span>
+                </div>
+
+                {/* Your status */}
+                <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-white/70">
+                  <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: cfg.color }}>
+                      Your Status — {who5Triage} · {who5Pct}%
+                    </div>
+                    <div className="text-xs text-slate-600 leading-relaxed">{activeBand.desc}</div>
+                  </div>
+                </div>
+
+                {/* Three bands */}
+                <div className="space-y-1.5 mb-3">
+                  {WHO5_TRIAGE_BANDS.map((band) => {
+                    const bCfg = TRIAGE_CONFIG[band.level];
+                    const isActive = band.level === who5Triage;
+                    return (
+                      <div
+                        key={band.level}
+                        className="flex gap-2 items-start rounded-lg px-2.5 py-2"
+                        style={{ background: isActive ? bCfg.color + '12' : 'transparent' }}
+                      >
+                        <span className="text-xs mt-0.5 flex-shrink-0">{bCfg.dot}</span>
+                        <div>
+                          <span className="text-xs font-bold" style={{ color: isActive ? bCfg.color : '#94a3b8' }}>
+                            {band.label} ({band.pctRange} · Raw {band.rawRange}):{' '}
+                          </span>
+                          <span className="text-xs" style={{ color: isActive ? '#374151' : '#94a3b8' }}>
+                            {band.desc}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Action tip */}
+                <div className="flex gap-2 items-start bg-white/60 rounded-xl px-3 py-2.5">
+                  <svg className="flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <p className="text-xs leading-relaxed" style={{ color: cfg.color }}>
+                    <span className="font-semibold">Action: </span>{activeBand.action}
+                  </p>
+                </div>
               </div>
-              <span className="text-amber-800 text-sm font-bold">Wellbeing Support Available</span>
-            </div>
-            <p className="text-amber-700 text-xs leading-relaxed">
-              Your WHO-5 score ({who5Pct}%) is below 52. An optional wellbeing support pathway is available — always clinician-governed.
-            </p>
-          </div>
-        )}
+            );
+          })()}
+        </div>
 
         {/* What's next card */}
         <div
