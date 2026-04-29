@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -487,6 +487,8 @@ export default function OneCareBaselinePage() {
   const [hliSelectedIdx, setHliSelectedIdx] = useState<(number | null)[]>(Array(5).fill(null));
   const [who5Step, setWho5Step] = useState(0);
   const [hliStep, setHliStep] = useState(0);
+  // Guard against rapid taps queueing multiple advance timeouts
+  const advancingRef = useRef(false);
 
   // WHO-5 derived
   const who5Raw = who5Answers.reduce<number>((sum, v) => sum + (v ?? 0), 0);
@@ -691,12 +693,16 @@ export default function OneCareBaselinePage() {
                 <button
                   key={opt.value}
                   onClick={() => {
+                    if (advancingRef.current) return;
+                    advancingRef.current = true;
                     const updated = [...who5Answers];
                     updated[who5Step] = opt.value;
                     setWho5Answers(updated);
+                    const stepAtClick = who5Step;
                     setTimeout(() => {
-                      if (isLast) setPhase('hli');
-                      else setWho5Step((s) => s + 1);
+                      advancingRef.current = false;
+                      if (stepAtClick === 4) setPhase('hli');
+                      else setWho5Step(stepAtClick + 1);
                     }, 280);
                   }}
                   className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
@@ -796,12 +802,16 @@ export default function OneCareBaselinePage() {
                 <button
                   key={`${q.id}-${i}`}
                   onClick={() => {
+                    if (advancingRef.current) return;
+                    advancingRef.current = true;
                     const updated = [...hliSelectedIdx];
                     updated[hliStep] = i;
                     setHliSelectedIdx(updated);
+                    const stepAtClick = hliStep;
                     setTimeout(() => {
-                      if (isLast) setPhase('results');
-                      else setHliStep((s) => s + 1);
+                      advancingRef.current = false;
+                      if (stepAtClick === 4) setPhase('results');
+                      else setHliStep(stepAtClick + 1);
                     }, 280);
                   }}
                   className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
