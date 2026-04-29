@@ -187,37 +187,78 @@ function ScoreArc({
   score,
   max,
   color,
+  size = 180,
 }: {
   score: number;
   max: number;
   color: string;
+  size?: number;
 }) {
-  const r = 54;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size * 0.38;
+  // Draw arc from 220deg to 320deg (leaving a gap at bottom), total 260deg
+  const startAngle = 130; // degrees (measured from 3-o'clock)
+  const totalAngle = 280;
+  const pct = score / max;
+  const filledAngle = pct * totalAngle;
+
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const arcPath = (startDeg: number, sweepDeg: number) => {
+    const start = toRad(startDeg);
+    const end = toRad(startDeg + sweepDeg);
+    const x1 = cx + r * Math.cos(start);
+    const y1 = cy + r * Math.sin(start);
+    const x2 = cx + r * Math.cos(end);
+    const y2 = cy + r * Math.sin(end);
+    const large = sweepDeg > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  };
+
+  const sw = size * 0.055;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* Track */}
+      <path d={arcPath(startAngle, totalAngle)} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={sw} strokeLinecap="round" />
+      {/* Fill */}
+      {pct > 0 && (
+        <path
+          d={arcPath(startAngle, filledAngle)}
+          fill="none"
+          stroke="#fff"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dasharray 1s cubic-bezier(.4,2,.6,1)' }}
+        />
+      )}
+      {/* Score */}
+      <text x={cx} y={cy - 8} textAnchor="middle" fill="white" fontSize={size * 0.22} fontWeight="800">
+        {score}
+      </text>
+      <text x={cx} y={cy + size * 0.1} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize={size * 0.075}>
+        out of {max}
+      </text>
+    </svg>
+  );
+}
+
+function MiniArc({ score, max, color }: { score: number; max: number; color: string }) {
+  const r = 28;
   const circ = 2 * Math.PI * r;
   const pct = score / max;
   const dash = pct * circ;
-
   return (
-    <svg width="140" height="140" viewBox="0 0 140 140">
-      <circle cx="70" cy="70" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10" />
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r={r} fill="none" stroke={color + '30'} strokeWidth="6" />
       <circle
-        cx="70"
-        cy="70"
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="10"
+        cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6"
         strokeDasharray={`${dash} ${circ - dash}`}
-        strokeLinecap="round"
-        strokeDashoffset={circ / 4}
-        style={{ transition: 'stroke-dasharray 0.8s cubic-bezier(.4,2,.6,1)' }}
+        strokeLinecap="round" strokeDashoffset={circ / 4}
+        style={{ transition: 'stroke-dasharray 0.8s ease' }}
       />
-      <text x="70" y="65" textAnchor="middle" fill={color} fontSize="28" fontWeight="700">
-        {score}
-      </text>
-      <text x="70" y="83" textAnchor="middle" fill="#9ca3af" fontSize="11">
-        / {max}
-      </text>
+      <text x="36" y="40" textAnchor="middle" fill={color} fontSize="14" fontWeight="700">{score}</text>
     </svg>
   );
 }
@@ -234,17 +275,17 @@ function BarRow({
   color: string;
 }) {
   return (
-    <div className="mb-4">
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm font-bold" style={{ color }}>
-          {score} / {max}
+    <div className="mb-3">
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-sm font-semibold text-slate-700">{label}</span>
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: color + '18', color }}>
+          {score}/{max}
         </span>
       </div>
-      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+      <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: color + '18' }}>
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${(score / max) * 100}%`, background: color }}
+          style={{ width: `${(score / max) * 100}%`, background: `linear-gradient(90deg, ${color}cc, ${color})` }}
         />
       </div>
     </div>
@@ -294,82 +335,111 @@ export default function OneCareBaselinePage() {
 
   if (phase === 'intro') {
     return (
-      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center p-4">
-        <div className="max-w-lg w-full">
-          {/* Logo pill */}
-          <div className="mb-10 flex items-center gap-2">
-            <span className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase">
-              1Care · GOFA
-            </span>
-          </div>
+      <div className="min-h-screen flex flex-col" style={{ background: '#f0f4ff' }}>
+        {/* Hero gradient header */}
+        <div
+          className="relative overflow-hidden px-6 pt-14 pb-10"
+          style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
+        >
+          {/* Decorative circles */}
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-10" style={{ background: '#fff' }} />
+          <div className="absolute -bottom-20 -left-8 w-56 h-56 rounded-full opacity-10" style={{ background: '#fff' }} />
 
-          <h1
-            className="text-5xl font-bold leading-tight mb-4"
-            style={{ fontFamily: 'var(--font-fraunces)', color: '#1a1a2e' }}
-          >
-            Your Health Index
-            <br />
-            <span style={{ color: '#2563eb' }}>Baseline</span>
-          </h1>
-
-          <p className="text-gray-500 text-lg mb-10 leading-relaxed">
-            10 questions. About 3 minutes. Completed once — then retested at Month 6 and Month 12.
-          </p>
-
-          {/* Two part cards */}
-          <div className="grid grid-cols-2 gap-3 mb-10">
-            <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm">
-              <div
-                className="text-3xl font-bold mb-1"
-                style={{ fontFamily: 'var(--font-fraunces)', color: '#2563eb' }}
-              >
-                0–20
-              </div>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Mental Wellbeing
-              </div>
-              <div className="text-sm text-gray-600">
-                WHO-5 Wellbeing Index — 5 questions covering the past two weeks.
-              </div>
+          <div className="relative max-w-md mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 mb-6">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-white/90 text-xs font-semibold tracking-wide">1CARE · GOFA</span>
             </div>
-            <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm">
-              <div
-                className="text-3xl font-bold mb-1"
-                style={{ fontFamily: 'var(--font-fraunces)', color: '#16a34a' }}
-              >
-                0–20
-              </div>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Lifestyle Behaviours
-              </div>
-              <div className="text-sm text-gray-600">
-                5 questions on activity, diet, smoking, sleep, and sedentary time.
-              </div>
-            </div>
-          </div>
 
-          <div className="rounded-2xl bg-[#1a1a2e] text-white p-5 mb-8 flex items-center gap-4">
-            <div
-              className="text-4xl font-bold"
+            <h1
+              className="text-4xl font-bold text-white leading-tight mb-3"
               style={{ fontFamily: 'var(--font-fraunces)' }}
             >
-              0–40
-            </div>
-            <div>
-              <div className="font-semibold text-sm mb-0.5">Total Baseline Score</div>
-              <div className="text-xs text-gray-400">
-                Your score will never fall below this — only your engagement can raise it to 100.
+              Your Health
+              <br />Index Baseline
+            </h1>
+            <p className="text-blue-100 text-sm leading-relaxed mb-8">
+              10 questions · ~3 minutes · Retested at Month 6 & 12
+            </p>
+
+            {/* Big score preview */}
+            <div className="flex justify-center">
+              <div className="bg-white/15 backdrop-blur rounded-3xl px-8 py-5 border border-white/20">
+                <div className="text-center">
+                  <div className="text-white/60 text-xs font-medium mb-1 uppercase tracking-widest">Score Range</div>
+                  <div
+                    className="text-6xl font-black text-white mb-1"
+                    style={{ fontFamily: 'var(--font-fraunces)' }}
+                  >0–40</div>
+                  <div className="text-white/60 text-xs">Your permanent baseline floor</div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
+        {/* Cards section */}
+        <div className="flex-1 px-5 -mt-4 max-w-md mx-auto w-full">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* WHO-5 card */}
+            <div className="bg-white rounded-3xl p-5 shadow-sm border border-blue-50 animate-fade-up">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </div>
+              <div className="text-blue-600 text-xs font-bold uppercase tracking-wide mb-1">Mental</div>
+              <div className="text-2xl font-black text-slate-800 mb-0.5" style={{ fontFamily: 'var(--font-fraunces)' }}>0–20</div>
+              <div className="text-slate-500 text-xs leading-relaxed">WHO-5 Wellbeing · 5 questions</div>
+            </div>
+
+            {/* HLI card */}
+            <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-50 animate-fade-up delay-100">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <div className="text-green-600 text-xs font-bold uppercase tracking-wide mb-1">Lifestyle</div>
+              <div className="text-2xl font-black text-slate-800 mb-0.5" style={{ fontFamily: 'var(--font-fraunces)' }}>0–20</div>
+              <div className="text-slate-500 text-xs leading-relaxed">Activity, diet, sleep & more</div>
+            </div>
+          </div>
+
+          {/* Info strip */}
+          <div
+            className="rounded-2xl p-4 mb-6 flex items-center gap-3 animate-fade-up delay-200"
+            style={{ background: 'linear-gradient(135deg, #1e3a8a, #1e40af)' }}
+          >
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <div className="text-white text-sm font-semibold">Score never drops</div>
+              <div className="text-blue-200 text-xs">Engagement earns you up to 60 more points</div>
+            </div>
+          </div>
+
+          {/* CTA */}
           <button
             onClick={() => setPhase('who5')}
-            className="w-full py-4 rounded-2xl text-white font-bold text-lg transition-all active:scale-[.98]"
-            style={{ background: '#2563eb' }}
+            className="w-full py-4 rounded-2xl text-white font-bold text-base transition-all active:scale-[.97] shadow-lg animate-fade-up delay-300"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 8px 24px #2563eb44' }}
           >
-            Start Baseline Assessment →
+            Start Assessment →
           </button>
+
+          <p className="mt-4 text-center text-xs text-slate-400 pb-8">
+            Not a clinical diagnosis · For programme engagement only
+          </p>
         </div>
       </div>
     );
@@ -382,54 +452,55 @@ export default function OneCareBaselinePage() {
     const selected = who5Answers[who5Step];
     const isLast = who5Step === 4;
 
-    const handleNext = () => {
-      if (selected === null) return;
-      if (isLast) {
-        setPhase('hli');
-      } else {
-        setWho5Step((s) => s + 1);
-      }
-    };
-
     return (
-      <div className="min-h-screen bg-[#eff6ff] flex items-center justify-center p-4">
-        <div className="max-w-lg w-full">
-          {/* Section header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold tracking-[0.2em] text-blue-400 uppercase mb-1">
-                Part 1 of 2 · Mental Wellbeing
+      <div className="min-h-screen flex flex-col" style={{ background: '#f0f4ff' }}>
+        {/* Header */}
+        <div
+          className="px-5 pt-12 pb-8"
+          style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}
+        >
+          <div className="max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              {who5Step > 0 ? (
+                <button
+                  onClick={() => setWho5Step((s) => s - 1)}
+                  className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center transition-all active:scale-90"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+              ) : <div className="w-9" />}
+              <div className="flex gap-1.5">
+                {WHO5_QUESTIONS.map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i === who5Step ? 20 : 6,
+                      height: 6,
+                      background: i <= who5Step ? '#fff' : 'rgba(255,255,255,0.3)'
+                    }}
+                  />
+                ))}
               </div>
-              <div className="text-sm text-gray-500">WHO-5 Wellbeing Index</div>
+              <div className="text-white/70 text-sm font-medium">{who5Step + 1}/5</div>
             </div>
-            <div className="text-sm text-gray-400">
-              {who5Step + 1} / 5
+
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
+              <span className="text-white/80 text-xs font-semibold">MENTAL WELLBEING</span>
             </div>
+            <p className="text-blue-200 text-xs mb-2 uppercase tracking-wide font-medium">Over the past two weeks —</p>
+            <h2
+              className="text-2xl font-bold text-white leading-snug"
+              style={{ fontFamily: 'var(--font-fraunces)' }}
+            >
+              {q}
+            </h2>
           </div>
+        </div>
 
-          {/* Progress */}
-          <div className="w-full h-1.5 rounded-full bg-blue-100 mb-8 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-400"
-              style={{ width: `${((who5Step + 1) / 5) * 100}%` }}
-            />
-          </div>
-
-          {/* Context note */}
-          <p className="text-xs text-blue-500 font-medium mb-4 uppercase tracking-wide">
-            Over the past two weeks —
-          </p>
-
-          {/* Question */}
-          <h2
-            className="text-2xl font-bold text-gray-900 mb-8 leading-snug"
-            style={{ fontFamily: 'var(--font-fraunces)' }}
-          >
-            {q}
-          </h2>
-
-          {/* Options */}
-          <div className="space-y-2 mb-8">
+        {/* Options */}
+        <div className="flex-1 px-5 pt-5 max-w-md mx-auto w-full">
+          <div className="space-y-2.5">
             {WHO5_OPTIONS.map((opt) => {
               const isSelected = selected === opt.value;
               return (
@@ -440,40 +511,40 @@ export default function OneCareBaselinePage() {
                     updated[who5Step] = opt.value;
                     setWho5Answers(updated);
                     setTimeout(() => {
-                      if (isLast) {
-                        setPhase('hli');
-                      } else {
-                        setWho5Step((s) => s + 1);
-                      }
-                    }, 320);
+                      if (isLast) setPhase('hli');
+                      else setWho5Step((s) => s + 1);
+                    }, 280);
                   }}
-                  className={`w-full text-left px-5 py-3.5 rounded-xl border-2 transition-all text-sm font-medium ${
-                    isSelected
-                      ? 'border-blue-500 bg-blue-50 text-blue-800'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
-                  }`}
+                  className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
+                  style={{
+                    background: isSelected
+                      ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
+                      : '#fff',
+                    boxShadow: isSelected
+                      ? '0 4px 16px #2563eb33'
+                      : '0 1px 4px rgba(0,0,0,0.06)',
+                    border: isSelected ? 'none' : '1.5px solid #e8edf8',
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
-                        isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {opt.label}
+                  <div
+                    className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                    style={{
+                      borderColor: isSelected ? '#fff' : '#d1d5db',
+                      background: isSelected ? '#fff' : 'transparent'
+                    }}
+                  >
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
                   </div>
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: isSelected ? '#fff' : '#374151' }}
+                  >
+                    {opt.label}
+                  </span>
                 </button>
               );
             })}
           </div>
-
-          {who5Step > 0 && (
-            <button
-              onClick={() => setWho5Step((s) => s - 1)}
-              className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
-            >
-              ← Back
-            </button>
-          )}
         </div>
       </div>
     );
@@ -486,47 +557,55 @@ export default function OneCareBaselinePage() {
     const selectedIdx = hliSelectedIdx[hliStep];
     const isLast = hliStep === 4;
 
-    const handleNext = () => {
-      if (selectedIdx === null) return;
-      if (isLast) {
-        setPhase('results');
-      } else {
-        setHliStep((s) => s + 1);
-      }
-    };
-
     return (
-      <div className="min-h-screen bg-[#f0fdf4] flex items-center justify-center p-4">
-        <div className="max-w-lg w-full">
-          {/* Section header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold tracking-[0.2em] text-green-500 uppercase mb-1">
-                Part 2 of 2 · Lifestyle Behaviours
+      <div className="min-h-screen flex flex-col" style={{ background: '#f0fdf6' }}>
+        {/* Header */}
+        <div
+          className="px-5 pt-12 pb-8"
+          style={{ background: 'linear-gradient(135deg, #14532d 0%, #16a34a 100%)' }}
+        >
+          <div className="max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => {
+                  if (hliStep === 0) { setPhase('who5'); setWho5Step(4); }
+                  else setHliStep((s) => s - 1);
+                }}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center transition-all active:scale-90"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div className="flex gap-1.5">
+                {HLI_QUESTIONS.map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i === hliStep ? 20 : 6,
+                      height: 6,
+                      background: i <= hliStep ? '#fff' : 'rgba(255,255,255,0.3)'
+                    }}
+                  />
+                ))}
               </div>
-              <div className="text-sm text-gray-500">{q.section}</div>
+              <div className="text-white/70 text-sm font-medium">{hliStep + 1}/5</div>
             </div>
-            <div className="text-sm text-gray-400">{hliStep + 1} / 5</div>
+
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
+              <span className="text-white/80 text-xs font-semibold uppercase tracking-wide">{q.section}</span>
+            </div>
+            <h2
+              className="text-2xl font-bold text-white leading-snug"
+              style={{ fontFamily: 'var(--font-fraunces)' }}
+            >
+              {q.question}
+            </h2>
           </div>
+        </div>
 
-          {/* Progress */}
-          <div className="w-full h-1.5 rounded-full bg-green-100 mb-8 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-green-500 transition-all duration-400"
-              style={{ width: `${((hliStep + 1) / 5) * 100}%` }}
-            />
-          </div>
-
-          {/* Question */}
-          <h2
-            className="text-2xl font-bold text-gray-900 mb-8 leading-snug"
-            style={{ fontFamily: 'var(--font-fraunces)' }}
-          >
-            {q.question}
-          </h2>
-
-          {/* Options — tracked by index to handle duplicate score values (e.g. sleep) */}
-          <div className="space-y-2 mb-8">
+        {/* Options */}
+        <div className="flex-1 px-5 pt-5 max-w-md mx-auto w-full">
+          <div className="space-y-2.5">
             {q.options.map((opt, i) => {
               const isSelected = selectedIdx === i;
               return (
@@ -537,45 +616,40 @@ export default function OneCareBaselinePage() {
                     updated[hliStep] = i;
                     setHliSelectedIdx(updated);
                     setTimeout(() => {
-                      if (isLast) {
-                        setPhase('results');
-                      } else {
-                        setHliStep((s) => s + 1);
-                      }
-                    }, 320);
+                      if (isLast) setPhase('results');
+                      else setHliStep((s) => s + 1);
+                    }, 280);
                   }}
-                  className={`w-full text-left px-5 py-3.5 rounded-xl border-2 transition-all text-sm font-medium ${
-                    isSelected
-                      ? 'border-green-500 bg-green-50 text-green-800'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-green-300'
-                  }`}
+                  className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
+                  style={{
+                    background: isSelected
+                      ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                      : '#fff',
+                    boxShadow: isSelected
+                      ? '0 4px 16px #16a34a33'
+                      : '0 1px 4px rgba(0,0,0,0.06)',
+                    border: isSelected ? 'none' : '1.5px solid #dcfce7',
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
-                        isSelected ? 'border-green-500 bg-green-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {opt.label}
+                  <div
+                    className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                    style={{
+                      borderColor: isSelected ? '#fff' : '#d1d5db',
+                      background: isSelected ? '#fff' : 'transparent'
+                    }}
+                  >
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-green-600" />}
                   </div>
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: isSelected ? '#fff' : '#374151' }}
+                  >
+                    {opt.label}
+                  </span>
                 </button>
               );
             })}
           </div>
-
-          <button
-            onClick={() => {
-              if (hliStep === 0) {
-                setPhase('who5');
-                setWho5Step(4);
-              } else {
-                setHliStep((s) => s - 1);
-              }
-            }}
-            className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
-          >
-            ← Back
-          </button>
         </div>
       </div>
     );
@@ -597,96 +671,76 @@ export default function OneCareBaselinePage() {
   const showWellbeingNote = who5Pct < 52;
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] p-4">
-      <div className="max-w-lg mx-auto py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase mb-2">
-            1Care · GOFA · Baseline Result
+    <div className="min-h-screen" style={{ background: '#f0f4ff' }}>
+      {/* Hero score section */}
+      <div
+        className="relative overflow-hidden px-5 pt-14 pb-6"
+        style={{ background: `linear-gradient(135deg, ${color}dd, ${color})` }}
+      >
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full opacity-10" style={{ background: '#fff' }} />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-10" style={{ background: '#fff' }} />
+
+        <div className="relative max-w-md mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
+            <span className="text-white/90 text-xs font-semibold tracking-wide">1CARE · GOFA · RESULT</span>
           </div>
-          <h1
-            className="text-4xl font-bold leading-tight text-gray-900"
+
+          <ScoreArc score={baseline} max={40} color={color} size={200} />
+
+          <div
+            className="text-2xl font-black text-white mt-1 mb-1"
             style={{ fontFamily: 'var(--font-fraunces)' }}
           >
-            Your Health Index
-            <br />
-            Baseline
-          </h1>
-        </div>
-
-        {/* Main score card */}
-        <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-6 mb-4 flex items-center gap-6">
-          <ScoreArc score={baseline} max={40} color={color} />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-              Baseline Score
-            </div>
-            <div
-              className="text-2xl font-bold mb-1"
-              style={{ fontFamily: 'var(--font-fraunces)', color }}
-            >
-              {label}
-            </div>
-            <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+            {label}
           </div>
+          <p className="text-white/80 text-sm leading-relaxed px-4 pb-2">{desc}</p>
         </div>
+      </div>
 
-        {/* Two component cards */}
+      <div className="px-5 pt-4 pb-10 max-w-md mx-auto">
+        {/* Two score cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* WHO-5 */}
-          <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-5">
-            <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
-              WHO-5 · Mental Wellbeing
+          <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-50 animate-fade-up">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <div className="text-blue-500 text-xs font-bold uppercase tracking-wide mb-0.5">Mental</div>
+                <div className="text-slate-400 text-xs">WHO-5</div>
+              </div>
+              <MiniArc score={who5Points} max={20} color="#2563eb" />
             </div>
-            <div
-              className="text-3xl font-bold mb-0.5"
-              style={{ fontFamily: 'var(--font-fraunces)', color: '#2563eb' }}
-            >
-              {who5Points}
-              <span className="text-base font-normal text-gray-400"> / 20</span>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-2xl font-black text-slate-800" style={{ fontFamily: 'var(--font-fraunces)' }}>{who5Points}</span>
+              <span className="text-slate-400 text-sm">/20</span>
             </div>
             <Pill label={who5Level.label} color={who5Level.color} />
-            <p className="mt-3 text-xs text-gray-500 leading-relaxed">
-              {WHO5_LEVEL_DESC[who5Level.label]}
-            </p>
-            <div className="mt-2 text-xs text-gray-400">
-              Raw score: {who5Raw}/25 · {who5Pct}%
-            </div>
           </div>
 
           {/* HLI */}
-          <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-5">
-            <div className="text-xs font-semibold text-green-500 uppercase tracking-wide mb-2">
-              Lifestyle (HLI)
+          <div className="bg-white rounded-3xl p-4 shadow-sm border border-green-50 animate-fade-up delay-100">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <div className="text-green-600 text-xs font-bold uppercase tracking-wide mb-0.5">Lifestyle</div>
+                <div className="text-slate-400 text-xs">HLI</div>
+              </div>
+              <MiniArc score={hliRaw} max={20} color="#16a34a" />
             </div>
-            <div
-              className="text-3xl font-bold mb-0.5"
-              style={{ fontFamily: 'var(--font-fraunces)', color: '#16a34a' }}
-            >
-              {hliRaw}
-              <span className="text-base font-normal text-gray-400"> / 20</span>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-2xl font-black text-slate-800" style={{ fontFamily: 'var(--font-fraunces)' }}>{hliRaw}</span>
+              <span className="text-slate-400 text-sm">/20</span>
             </div>
             <Pill
               label={hliLabel}
-              color={
-                hliRaw >= 18
-                  ? '#22c55e'
-                  : hliRaw >= 14
-                  ? '#84cc16'
-                  : hliRaw >= 9
-                  ? '#f59e0b'
-                  : hliRaw >= 5
-                  ? '#f97316'
-                  : '#ef4444'
-              }
+              color={hliRaw >= 18 ? '#22c55e' : hliRaw >= 14 ? '#84cc16' : hliRaw >= 9 ? '#f59e0b' : hliRaw >= 5 ? '#f97316' : '#ef4444'}
             />
           </div>
         </div>
 
-        {/* HLI breakdown */}
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 mb-4">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-5">
-            Lifestyle Breakdown
+        {/* Lifestyle breakdown card */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4 animate-fade-up delay-200">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-slate-800 text-sm font-bold">Lifestyle Breakdown</span>
+            <span className="text-xs text-slate-400 font-medium">out of 4</span>
           </div>
           {hliBreakdownItems.map((item, i) => {
             const domainId = HLI_QUESTIONS[i].id;
@@ -694,76 +748,62 @@ export default function OneCareBaselinePage() {
             const barColor = item.score >= 3 ? '#22c55e' : item.score >= 2 ? '#f59e0b' : '#ef4444';
             const scoreNote = HLI_SCORE_NOTE[item.score] ?? '';
             return (
-              <div key={item.label} className="mb-6 last:mb-0">
-                <BarRow
-                  label={item.label}
-                  score={item.score}
-                  max={item.max}
-                  color={barColor}
-                />
-                <p className="text-xs text-gray-500 leading-relaxed mb-0.5">
-                  {scoreNote}
-                </p>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  {expl.what} {expl.tip}
-                </p>
+              <div key={item.label} className="mb-4 last:mb-0">
+                <BarRow label={item.label} score={item.score} max={item.max} color={barColor} />
+                <p className="text-xs text-slate-500 leading-relaxed mt-1">{scoreNote}</p>
+                <p className="text-xs text-slate-400 leading-relaxed">{expl.tip}</p>
               </div>
             );
           })}
         </div>
 
-        {/* WHO-5 wellbeing note */}
+        {/* Mental wellbeing note */}
         {showWellbeingNote && (
-          <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 mb-4">
-            <div className="text-sm font-semibold text-amber-700 mb-1">
-              Wellbeing Support Pathway
+          <div
+            className="rounded-3xl p-5 mb-4 border border-amber-100 animate-fade-up"
+            style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-xl bg-amber-400/20 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <span className="text-amber-800 text-sm font-bold">Wellbeing Support Available</span>
             </div>
-            <p className="text-xs text-amber-600 leading-relaxed">
-              Your WHO-5 score ({who5Pct}%) is below 52, which the WHO associates with some
-              emotional burden. An optional wellbeing support pathway is available — not
-              punitive, not automatic, and always clinician-governed.
+            <p className="text-amber-700 text-xs leading-relaxed">
+              Your WHO-5 score ({who5Pct}%) is below 52. An optional wellbeing support pathway is available — always clinician-governed.
             </p>
           </div>
         )}
 
-        {/* What happens next */}
-        <div className="rounded-2xl bg-[#1a1a2e] text-white p-6 mb-6">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            What Happens Next
-          </div>
-          <div className="space-y-3 text-sm">
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                +
+        {/* What's next card */}
+        <div
+          className="rounded-3xl p-5 mb-5 animate-fade-up delay-300"
+          style={{ background: 'linear-gradient(135deg, #0f172a, #1e3a8a)' }}
+        >
+          <div className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-4">What Happens Next</div>
+          <div className="space-y-4">
+            <div className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-2xl bg-blue-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-black">+60</span>
               </div>
-              <p className="text-gray-300">
-                Earn up to <strong className="text-white">60 more points</strong> through weekly
-                AI Move sessions, nutrition logging, hydration tracking, and consistency.
-              </p>
+              <p className="text-white/80 text-sm leading-relaxed">Earn up to <span className="text-white font-bold">60 more points</span> through AI Move, nutrition, hydration & consistency.</p>
             </div>
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                ↑
+            <div className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-2xl bg-green-500 flex items-center justify-center flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
               </div>
-              <p className="text-gray-300">
-                Your score <strong className="text-white">will never fall below {baseline}</strong>{' '}
-                — your baseline is your permanent floor.
-              </p>
+              <p className="text-white/80 text-sm leading-relaxed">Your score <span className="text-white font-bold">never falls below {baseline}</span> — this is your permanent floor.</p>
             </div>
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                6
+            <div className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-2xl bg-purple-500 flex items-center justify-center flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               </div>
-              <p className="text-gray-300">
-                Retest at <strong className="text-white">Month 6</strong> and{' '}
-                <strong className="text-white">Month 12</strong> to see if your baseline itself
-                has improved.
-              </p>
+              <p className="text-white/80 text-sm leading-relaxed">Retest at <span className="text-white font-bold">Month 6</span> and <span className="text-white font-bold">Month 12</span> to see if your baseline improves.</p>
             </div>
           </div>
         </div>
 
-        {/* Restart */}
+        {/* Retake */}
         <button
           onClick={() => {
             setPhase('intro');
@@ -772,15 +812,13 @@ export default function OneCareBaselinePage() {
             setWho5Step(0);
             setHliStep(0);
           }}
-          className="w-full py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
+          className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[.97] border-2 border-slate-200 text-slate-500 bg-white"
         >
           Retake Assessment
         </button>
 
-        {/* Governance footnote */}
-        <p className="mt-6 text-center text-xs text-gray-400 leading-relaxed px-4">
-          This is not a clinical diagnosis, medical risk score, or underwriting instrument.
-          The 1Care Health Index measures healthy lifestyle adherence and engagement momentum.
+        <p className="mt-5 text-center text-xs text-slate-400 leading-relaxed px-4 pb-4">
+          Not a clinical diagnosis, medical risk score, or underwriting instrument.
         </p>
       </div>
     </div>
