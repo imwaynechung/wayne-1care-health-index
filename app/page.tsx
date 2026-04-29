@@ -84,6 +84,47 @@ const HLI_QUESTIONS = [
   },
 ];
 
+// ─── Domain explanations (for results page) ─────────────────────────────────
+
+const HLI_EXPLANATIONS: Record<string, { what: string; tip: string }> = {
+  activity: {
+    what: 'Regular moderate exercise reduces your risk of heart disease, diabetes, and certain cancers.',
+    tip: 'Aim for at least 30 minutes on 5 or more days per week — brisk walking counts.',
+  },
+  diet: {
+    what: 'Fruit and vegetables provide fibre, vitamins, and antioxidants your body needs to fight disease.',
+    tip: 'Try to reach 5 servings a day — 1 piece of fruit or half a cup of vegetables each.',
+  },
+  smoking: {
+    what: 'Smoking is the single biggest preventable cause of heart disease, stroke, and lung cancer.',
+    tip: 'Every year after quitting, your risk continues to fall significantly.',
+  },
+  sleep: {
+    what: 'Both too little and too much sleep disrupt your hormones, immunity, and heart health.',
+    tip: 'Most adults do best with 7–8 hours per night — quality matters as much as quantity.',
+  },
+  sedentary: {
+    what: 'Sitting for long stretches raises metabolic risk even if you exercise regularly.',
+    tip: 'Try to stand up or take a short walk every hour to break up sitting time.',
+  },
+};
+
+const WHO5_LEVEL_DESC: Record<string, string> = {
+  Good: 'Your mood, energy, and rest levels are all tracking well over the past two weeks.',
+  Moderate: 'You are coping most of the time, with some dips in mood or energy.',
+  Low: 'You may be experiencing persistent low mood, fatigue, or poor sleep. Worth keeping an eye on.',
+  'Very Low':
+    'This score suggests meaningful emotional strain. Talking to someone — a friend, GP, or counsellor — can help.',
+};
+
+const HLI_SCORE_NOTE: Record<number, string> = {
+  4: 'Excellent — keep it up.',
+  3: 'Good — small tweaks can push this higher.',
+  2: 'Moderate — there is real room to improve here.',
+  1: 'Low — this area is worth prioritising.',
+  0: 'Very low — addressing this could make the biggest difference.',
+};
+
 // ─── Scoring helpers ──────────────────────────────────────────────────────────
 
 function calcWho5Points(rawScore: number): number {
@@ -398,6 +439,13 @@ export default function OneCareBaselinePage() {
                     const updated = [...who5Answers];
                     updated[who5Step] = opt.value;
                     setWho5Answers(updated);
+                    setTimeout(() => {
+                      if (isLast) {
+                        setPhase('hli');
+                      } else {
+                        setWho5Step((s) => s + 1);
+                      }
+                    }, 320);
                   }}
                   className={`w-full text-left px-5 py-3.5 rounded-xl border-2 transition-all text-sm font-medium ${
                     isSelected
@@ -418,27 +466,14 @@ export default function OneCareBaselinePage() {
             })}
           </div>
 
-          <div className="flex gap-3">
-            {who5Step > 0 && (
-              <button
-                onClick={() => setWho5Step((s) => s - 1)}
-                className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
-              >
-                ← Back
-              </button>
-            )}
+          {who5Step > 0 && (
             <button
-              onClick={handleNext}
-              disabled={selected === null}
-              className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${
-                selected !== null
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[.98]'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
+              onClick={() => setWho5Step((s) => s - 1)}
+              className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
             >
-              {isLast ? 'Continue to Lifestyle →' : 'Next →'}
+              ← Back
             </button>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -501,6 +536,13 @@ export default function OneCareBaselinePage() {
                     const updated = [...hliSelectedIdx];
                     updated[hliStep] = i;
                     setHliSelectedIdx(updated);
+                    setTimeout(() => {
+                      if (isLast) {
+                        setPhase('results');
+                      } else {
+                        setHliStep((s) => s + 1);
+                      }
+                    }, 320);
                   }}
                   className={`w-full text-left px-5 py-3.5 rounded-xl border-2 transition-all text-sm font-medium ${
                     isSelected
@@ -521,32 +563,19 @@ export default function OneCareBaselinePage() {
             })}
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                if (hliStep === 0) {
-                  setPhase('who5');
-                  setWho5Step(4);
-                } else {
-                  setHliStep((s) => s - 1);
-                }
-              }}
-              className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
-            >
-              ← Back
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={selectedIdx === null}
-              className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${
-                selectedIdx !== null
-                  ? 'bg-green-600 text-white hover:bg-green-700 active:scale-[.98]'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isLast ? 'See My Baseline →' : 'Next →'}
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if (hliStep === 0) {
+                setPhase('who5');
+                setWho5Step(4);
+              } else {
+                setHliStep((s) => s - 1);
+              }
+            }}
+            className="px-6 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 transition-all"
+          >
+            ← Back
+          </button>
         </div>
       </div>
     );
@@ -607,7 +636,7 @@ export default function OneCareBaselinePage() {
           {/* WHO-5 */}
           <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-5">
             <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
-              WHO-5 Wellbeing
+              WHO-5 · Mental Wellbeing
             </div>
             <div
               className="text-3xl font-bold mb-0.5"
@@ -617,7 +646,10 @@ export default function OneCareBaselinePage() {
               <span className="text-base font-normal text-gray-400"> / 20</span>
             </div>
             <Pill label={who5Level.label} color={who5Level.color} />
-            <div className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+              {WHO5_LEVEL_DESC[who5Level.label]}
+            </p>
+            <div className="mt-2 text-xs text-gray-400">
               Raw score: {who5Raw}/25 · {who5Pct}%
             </div>
           </div>
@@ -653,20 +685,31 @@ export default function OneCareBaselinePage() {
 
         {/* HLI breakdown */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 mb-4">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-5">
             Lifestyle Breakdown
           </div>
-          {hliBreakdownItems.map((item) => (
-            <BarRow
-              key={item.label}
-              label={item.label}
-              score={item.score}
-              max={item.max}
-              color={
-                item.score >= 3 ? '#22c55e' : item.score >= 2 ? '#f59e0b' : '#ef4444'
-              }
-            />
-          ))}
+          {hliBreakdownItems.map((item, i) => {
+            const domainId = HLI_QUESTIONS[i].id;
+            const expl = HLI_EXPLANATIONS[domainId];
+            const barColor = item.score >= 3 ? '#22c55e' : item.score >= 2 ? '#f59e0b' : '#ef4444';
+            const scoreNote = HLI_SCORE_NOTE[item.score] ?? '';
+            return (
+              <div key={item.label} className="mb-6 last:mb-0">
+                <BarRow
+                  label={item.label}
+                  score={item.score}
+                  max={item.max}
+                  color={barColor}
+                />
+                <p className="text-xs text-gray-500 leading-relaxed mb-0.5">
+                  {scoreNote}
+                </p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {expl.what} {expl.tip}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {/* WHO-5 wellbeing note */}
