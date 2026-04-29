@@ -1,6 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+// ─── Haptic feedback helper ──────────────────────────────────────────────────
+// Mimics native app tap feedback. No-op on devices/browsers without vibration.
+function haptic(pattern: number | number[] = 8) {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate(pattern); } catch { /* ignore */ }
+  }
+}
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -295,13 +303,32 @@ function ScoreArc({
   color: string;
   size?: number;
 }) {
+  // Animate score count-up from 0 → final on mount
+  const [animScore, setAnimScore] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const duration = 1100;
+    const from = 0;
+    const tick = (t: number) => {
+      const elapsed = t - start;
+      const p = Math.min(1, elapsed / duration);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - p, 3);
+      setAnimScore(from + (score - from) * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [score]);
+
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.38;
   // Draw arc from 220deg to 320deg (leaving a gap at bottom), total 260deg
   const startAngle = 130; // degrees (measured from 3-o'clock)
   const totalAngle = 280;
-  const pct = score / max;
+  const pct = animScore / max;
   const filledAngle = pct * totalAngle;
 
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -336,7 +363,7 @@ function ScoreArc({
       )}
       {/* Score */}
       <text x={cx} y={cy - 8} textAnchor="middle" fill="white" fontSize={size * 0.22} fontWeight="800">
-        {score}
+        {Math.round(animScore)}
       </text>
       <text x={cx} y={cy + size * 0.1} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize={size * 0.075}>
         out of {max}
@@ -521,7 +548,7 @@ export default function OneCareBaselinePage() {
 
   if (phase === 'intro') {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: '#f0f4ff' }}>
+      <div key="intro" className="min-h-screen flex flex-col animate-phase-enter" style={{ background: '#f0f4ff' }}>
         {/* Hero gradient header */}
         <div
           className="relative overflow-hidden px-6 pt-14 pb-10"
@@ -616,9 +643,9 @@ export default function OneCareBaselinePage() {
 
           {/* CTA */}
           <button
-            onClick={() => setPhase('who5')}
-            className="w-full py-4 rounded-2xl text-white font-bold text-base transition-all active:scale-[.97] shadow-lg animate-fade-up delay-300"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 8px 24px #2563eb44' }}
+            onClick={() => { haptic(12); setPhase('who5'); }}
+            className="w-full py-4 rounded-2xl text-white font-bold text-base tap-press cta-shimmer animate-pulse-glow shadow-lg animate-fade-up delay-300"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}
           >
             Start Assessment →
           </button>
@@ -639,7 +666,7 @@ export default function OneCareBaselinePage() {
     const isLast = who5Step === 4;
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: '#f0f4ff' }}>
+      <div key="who5" className="min-h-screen flex flex-col animate-phase-enter" style={{ background: '#f0f4ff' }}>
         {/* Header */}
         <div
           className="px-5 pt-12 pb-8"
@@ -649,8 +676,8 @@ export default function OneCareBaselinePage() {
             <div className="flex items-center justify-between mb-6">
               {who5Step > 0 ? (
                 <button
-                  onClick={() => setWho5Step((s) => s - 1)}
-                  className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center transition-all active:scale-90"
+                  onClick={() => { haptic(6); setWho5Step((s) => s - 1); }}
+                  className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center tap-press"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
@@ -674,19 +701,21 @@ export default function OneCareBaselinePage() {
             <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
               <span className="text-white/80 text-xs font-semibold">MENTAL WELLBEING</span>
             </div>
-            <p className="text-blue-200 text-xs mb-2 uppercase tracking-wide font-medium">Over the past two weeks —</p>
-            <h2
-              className="text-2xl font-bold text-white leading-snug"
-              style={{ fontFamily: 'var(--font-fraunces)' }}
-            >
-              {q}
-            </h2>
+            <div key={`who5-q-${who5Step}`} className="animate-slide-right">
+              <p className="text-blue-200 text-xs mb-2 uppercase tracking-wide font-medium">Over the past two weeks —</p>
+              <h2
+                className="text-2xl font-bold text-white leading-snug"
+                style={{ fontFamily: 'var(--font-fraunces)' }}
+              >
+                {q}
+              </h2>
+            </div>
           </div>
         </div>
 
         {/* Options */}
         <div className="flex-1 px-5 pt-5 max-w-md mx-auto w-full">
-          <div className="space-y-2.5">
+          <div key={`who5-opts-${who5Step}`} className="space-y-2.5 animate-slide-right">
             {WHO5_OPTIONS.map((opt) => {
               const isSelected = selected === opt.value;
               return (
@@ -695,6 +724,7 @@ export default function OneCareBaselinePage() {
                   onClick={() => {
                     if (advancingRef.current) return;
                     advancingRef.current = true;
+                    haptic(10);
                     const updated = [...who5Answers];
                     updated[who5Step] = opt.value;
                     setWho5Answers(updated);
@@ -705,7 +735,7 @@ export default function OneCareBaselinePage() {
                       else setWho5Step(stepAtClick + 1);
                     }, 280);
                   }}
-                  className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
+                  className={`w-full text-left px-5 py-4 rounded-2xl tap-press flex items-center gap-3 ${isSelected ? 'animate-pop' : ''}`}
                   style={{
                     background: isSelected
                       ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
@@ -748,7 +778,7 @@ export default function OneCareBaselinePage() {
     const isLast = hliStep === 4;
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: '#f0fdf6' }}>
+      <div key="hli" className="min-h-screen flex flex-col animate-phase-enter" style={{ background: '#f0fdf6' }}>
         {/* Header */}
         <div
           className="px-5 pt-12 pb-8"
@@ -758,10 +788,11 @@ export default function OneCareBaselinePage() {
             <div className="flex items-center justify-between mb-6">
               <button
                 onClick={() => {
+                  haptic(6);
                   if (hliStep === 0) { setPhase('who5'); setWho5Step(4); }
                   else setHliStep((s) => s - 1);
                 }}
-                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center transition-all active:scale-90"
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center tap-press"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
@@ -781,21 +812,23 @@ export default function OneCareBaselinePage() {
               <div className="text-white/70 text-sm font-medium">{hliStep + 1}/5</div>
             </div>
 
-            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
-              <span className="text-white/80 text-xs font-semibold uppercase tracking-wide">{q.section}</span>
+            <div key={`hli-q-${hliStep}`} className="animate-slide-right">
+              <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 mb-4">
+                <span className="text-white/80 text-xs font-semibold uppercase tracking-wide">{q.section}</span>
+              </div>
+              <h2
+                className="text-2xl font-bold text-white leading-snug"
+                style={{ fontFamily: 'var(--font-fraunces)' }}
+              >
+                {q.question}
+              </h2>
             </div>
-            <h2
-              className="text-2xl font-bold text-white leading-snug"
-              style={{ fontFamily: 'var(--font-fraunces)' }}
-            >
-              {q.question}
-            </h2>
           </div>
         </div>
 
         {/* Options */}
         <div className="flex-1 px-5 pt-5 max-w-md mx-auto w-full">
-          <div className="space-y-2.5">
+          <div key={`hli-opts-${hliStep}`} className="space-y-2.5 animate-slide-right">
             {q.options.map((opt, i) => {
               const isSelected = selectedIdx === i;
               return (
@@ -804,6 +837,7 @@ export default function OneCareBaselinePage() {
                   onClick={() => {
                     if (advancingRef.current) return;
                     advancingRef.current = true;
+                    haptic(10);
                     const updated = [...hliSelectedIdx];
                     updated[hliStep] = i;
                     setHliSelectedIdx(updated);
@@ -814,7 +848,7 @@ export default function OneCareBaselinePage() {
                       else setHliStep(stepAtClick + 1);
                     }, 280);
                   }}
-                  className="w-full text-left px-5 py-4 rounded-2xl transition-all active:scale-[.98] flex items-center gap-3"
+                  className={`w-full text-left px-5 py-4 rounded-2xl tap-press flex items-center gap-3 ${isSelected ? 'animate-pop' : ''}`}
                   style={{
                     background: isSelected
                       ? 'linear-gradient(135deg, #16a34a, #15803d)'
@@ -863,7 +897,7 @@ export default function OneCareBaselinePage() {
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: '#f0f4ff' }}>
+    <div key="results" className="min-h-screen animate-phase-enter" style={{ background: '#f0f4ff' }}>
       {/* Hero score section */}
       <div
         className="relative overflow-hidden px-5 pt-14 pb-6"
@@ -1074,13 +1108,14 @@ export default function OneCareBaselinePage() {
         {/* Retake */}
         <button
           onClick={() => {
+            haptic(8);
             setPhase('intro');
             setWho5Answers(Array(5).fill(null));
             setHliSelectedIdx(Array(5).fill(null));
             setWho5Step(0);
             setHliStep(0);
           }}
-          className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[.97] border-2 border-slate-200 text-slate-500 bg-white"
+          className="w-full py-4 rounded-2xl font-bold text-sm tap-press border-2 border-slate-200 text-slate-500 bg-white"
         >
           Retake Assessment
         </button>
