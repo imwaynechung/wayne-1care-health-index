@@ -391,48 +391,39 @@ function MiniArc({ score, max, color }: { score: number; max: number; color: str
   );
 }
 
-function TriageCard({
+function DomainRow({
   label,
   domainId,
   score,
-  defaultOpen = false,
+  isLast,
 }: {
   label: string;
   domainId: string;
   score: number;
-  defaultOpen?: boolean;
+  isLast: boolean;
 }) {
   const triage = getDomainTriage(domainId, score);
   const cfg = TRIAGE_CONFIG[triage];
   const data = HLI_TRIAGE[domainId];
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className="rounded-2xl border mb-3 last:mb-0 overflow-hidden tap-press"
-      style={{ background: cfg.bg, borderColor: cfg.border }}
-    >
-      {/* Header row — clickable */}
+    <div className={isLast ? '' : 'border-b border-slate-100'}>
+      {/* Clean clickable row */}
       <button
         type="button"
         onClick={() => { haptic(6); setOpen((o) => !o); }}
-        className="w-full flex items-center justify-between p-4 text-left"
+        className="w-full flex items-center justify-between px-4 py-3.5 tap-press"
         aria-expanded={open}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base">{cfg.dot}</span>
-          <span className="text-sm font-bold text-slate-800 truncate">{label}</span>
-          <span
-            className="text-[10px] font-bold uppercase tracking-wide ml-1"
-            style={{ color: cfg.color }}
-          >
-            {triage}
-          </span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-base flex-shrink-0">{cfg.dot}</span>
+          <span className="text-sm text-slate-700 font-medium truncate">{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span
             className="text-xs font-bold px-2.5 py-1 rounded-full"
-            style={{ background: cfg.color + '18', color: cfg.color }}
+            style={{ background: cfg.color + '15', color: cfg.color }}
           >
             {cfg.priority}
           </span>
@@ -441,7 +432,7 @@ function TriageCard({
             height="14"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={cfg.color}
+            stroke="#94a3b8"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -464,7 +455,10 @@ function TriageCard({
         }}
       >
         <div className="overflow-hidden">
-          <div className="px-4 pb-4">
+          <div
+            className="mx-3 mb-3 rounded-2xl border p-3.5"
+            style={{ background: cfg.bg, borderColor: cfg.border }}
+          >
             {/* Your status */}
             <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-white/70">
               <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
@@ -486,7 +480,7 @@ function TriageCard({
                 return (
                   <div
                     key={l.level}
-                    className="flex gap-2 items-start rounded-lg px-2.5 py-2 transition-all"
+                    className="flex gap-2 items-start rounded-lg px-2.5 py-2"
                     style={{ background: isActive ? lCfg.color + '12' : 'transparent' }}
                   >
                     <span className="text-xs mt-0.5 flex-shrink-0">{lCfg.dot}</span>
@@ -515,6 +509,10 @@ function TriageCard({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
@@ -1007,43 +1005,20 @@ export default function OneCareBaselinePage() {
           </div>
         </div>
 
-        {/* Triage summary strip */}
-        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 mb-4 animate-fade-up delay-200">
-          <div className="text-slate-800 text-sm font-bold mb-3">Lifestyle Domain Triage</div>
-          <div className="space-y-2">
-            {HLI_QUESTIONS.map((q, i) => {
-              const score = hliAnswers[i] ?? 0;
-              const triage = getDomainTriage(q.id, score);
-              const cfg = TRIAGE_CONFIG[triage];
-              return (
-                <div key={q.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{cfg.dot}</span>
-                    <span className="text-sm text-slate-700 font-medium">{q.section}</span>
-                  </div>
-                  <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: cfg.color + '15', color: cfg.color }}
-                  >
-                    {cfg.priority}
-                  </span>
-                </div>
-              );
-            })}
+        {/* Lifestyle Domain Triage — clean expandable list */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 mb-4 overflow-hidden animate-fade-up delay-200">
+          <div className="text-slate-800 text-sm font-bold px-4 pt-4 pb-2">Lifestyle Domain Triage</div>
+          <div>
+            {HLI_QUESTIONS.map((q, i) => (
+              <DomainRow
+                key={q.id}
+                label={q.section}
+                domainId={q.id}
+                score={hliAnswers[i] ?? 0}
+                isLast={i === HLI_QUESTIONS.length - 1}
+              />
+            ))}
           </div>
-        </div>
-
-        {/* Detailed triage cards */}
-        <div className="mb-4 animate-fade-up delay-200">
-          <div className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Domain Detail</div>
-          {HLI_QUESTIONS.map((q, i) => (
-            <TriageCard
-              key={q.id}
-              label={q.section}
-              domainId={q.id}
-              score={hliAnswers[i] ?? 0}
-            />
-          ))}
         </div>
 
         {/* WHO-5 Triage Card */}
